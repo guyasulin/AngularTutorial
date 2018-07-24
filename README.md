@@ -402,3 +402,205 @@ export class UserComponent implements OnInit {
 ``` html
 <a [routerLink]="['/users','1','Moshe !!!!']">Load user</a>
 ```
+# Services & Injections
+---
+
+- Services are usually a shared classes (code) which is used across the whole application.  
+- For example, servce can be used for translation, Date formatting or any other utils or filtering.
+- Good tutorial can be found here: <a href="https://code.tutsplus.com/tutorials/beginners-guide-to-angular-4-services--cms-29675">
+  beginners-guide-to-angular-4-services</a>
+- Services are used with <a href="https://angular.io/guide/dependency-injection">Angular Dependency Injection</a>
+
+### step 22 - Services
+- Checkout the <a href="services-start.zip">attached zip<a/> and extract it to a new folder
+- Initailize and execute the application
+```sh
+  cd <app folder>
+  npm i
+  ng serve
+```
+- Run the application
+  - View the code and try to figure out what the app does
+  - How data is passed between the diffrent components
+  - Check the `console` for the output
+
+#### Services
+- Lets write our first service
+- Our service will be a simple logger which will replace the `console.log` across the application
+
+- Create a new class `services-start/src/app/logging.service.ts`
+- Service is a just a regular JS class
+```js
+/**
+ * Service is just a simple js class.
+ * Our service will simply log our messages to the console
+ * 
+ * - No decorator is required.
+ * - The service will be injected into the componenets and or directives
+ */
+export class LoggingService {
+
+    // class method
+    logStatusChange(status: string) {
+        console.log(`[Service] - New status: ${status}`);
+    }
+
+}
+```
+
+- Inject the service to the required modules
+- The injection is done by adding the service we need into the constructor
+- Add the required import (the `LoggingService`)
+- Add the service provider. Provider tells Angular which service we will need
+- In the constructor we **must** declare the specific type
+```js
+// services-start/src/app/new-account/new-account.component
+
+... 
+import { LoggingService } from '../logging.service';
+... 
+
+@Component({
+  ...
+  // Add the required service as provider attribute of the Componenet 
+  providers: [LoggingService]
+})
+...
+
+export class NewAccountComponent {
+  ...
+  // Add the Constructor with the Service injection
+  // Make sure to specify the required type
+  constructor( private logger: LoggingService){}
+  ...
+}
+
+```
+- Search for all `console.log` in other componenets and convert them to the `LoggingService`
+  - Tip: In Visual studio code you can simply add the provider list and the import will be added automaticlly 
+```js
+...
+
+export class NewAccountComponent {
+  ...
+  onCreateAccount(accountName: string, accountStatus: string) {
+    ...
+    // Use the Service to log messages
+    this.logger.logStatusChange('New status: ' + accountStatus);
+  }
+}
+
+```
+- Verify that the code is working and that the `console.log` is printed out from the service.
+
+
+### step 23 - Data Services
+- Data services are used to store data 
+- Lets create service for storing the AccountData
+- Create new service file `services-start/src/app/accounts.service.ts`
+- Move the code from the `AppComponent` to the new service file
+```js
+/**
+ * This service will store our accounts data
+ */
+export class AccountsService {
+
+    // Remove the code from the app componenets and paste it here
+    accounts = [
+        {name: 'Master Account',status: 'active'},
+        {name: 'Testaccount',status: 'inactive'},
+        {name: 'Hidden Account',status: 'unknown'}
+    ];
+
+    addAcount(name: string, status: string) {
+        this.accounts.push({ name: name, status: status });
+    }
+
+    updateStatus(id: number, newStatus: string) {
+        this.accounts[id].status = newStatus;
+    }
+}
+```
+- Since we have an accounts in the `services-start/src/app/app.component.html` we need to read them from the service
+```html
+<app-account
+        *ngFor="let acc of accounts; let i = index"
+        [account]="acc"
+        [id]="i"
+        (statusChanged)="onStatusChanged($event)"></app-account>
+```
+- Add the service to the `services-start/src/app/app.component.ts`
+  - Import
+  - Provider
+  - Constructr
+- Initialization should be done inside the `OnInit`  
+```js
+// app.component.ts
+
+import { AccountsService } from './accounts.service';
+...
+@Component({
+  ...
+  providers: [AccountsService]
+})
+export class AppComponent implements OnInit {
+
+  // Add the accounts array. The content will be loaded from the service
+  accounts: { name: string, status: string }[] = [];
+
+  // Inject the service
+  constructor(private accountsService: AccountsService) { }
+
+  // initialize the accounts data
+  ngOnInit() {
+    // Get the accounts from the service
+    this.accounts = this.accountsService.accounts;
+  }
+
+}
+
+```
+- Update the `NewAccountComponent`
+  - Remove the `EventEmitter` since its now part of the service
+  - Add imports & update the code
+```js
+
+// Add the service imprt
+import { LoggingService } from '../logging.service';
+import { AccountsService } from '../accounts.service';
+
+export class NewAccountComponent {
+  constructor(
+    private logger: LoggingService,
+    private accountsService: AccountsService) { }
+
+  onCreateAccount(accountName: string, accountStatus: string) {
+    this.accountsService.addAcount(accountName, accountStatus);
+    this.logger.logStatusChange('New status: ' + accountStatus);
+  }
+}
+```
+- Update the `AccountComponent` as well and remove the unused code
+```js
+import { LoggingService } from '../logging.service';
+import { AccountsService } from '../accounts.service';
+
+export class AccountComponent {
+  @Input() account: { name: string, status: string };
+  @Input() id: number;
+
+  // Add the Constructor with the Service injection
+  // Make sure to specify the required type
+  constructor(
+    private logger: LoggingService,
+    private accountsService: AccountsService
+  ) {
+
+  }
+  onSetTo(status: string) {
+    this.accountsService.updateStatus(this.id, status);
+    this.logger.logStatusChange('New status: ' + status);
+  }
+}
+```
+
